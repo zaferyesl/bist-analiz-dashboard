@@ -256,8 +256,13 @@ def _run_minervini(data_dict):
                 score += 1; checks.append("52h dibinin +%25 üstünde")
             if price >= high_52w * 0.75:
                 score += 1; checks.append("52h zirvesinin %75 üstünde")
+<<<<<<< HEAD
             if rsi_val >= 70:
                 score += 1; checks.append(f"RSI≥70 ({rsi_val:.0f})")
+=======
+            if rsi_val >= 60:
+                score += 1; checks.append(f"RSI≥60 ({rsi_val:.0f})")
+>>>>>>> 9e439e475d3267be52c01eac93d6a8e0814baba5
 
             if score >= 6:
                 levels = _price_levels(df, atr_mult_stop=2.5, target_pct=0.08)
@@ -755,6 +760,7 @@ def _run_spek(data_dict):
 
 
 # ────────────────────────────────────────────────────────────
+<<<<<<< HEAD
 # STRAT 12 – TGYESIL
 # ────────────────────────────────────────────────────────────
 def _run_tgyesil(data_dict):
@@ -859,6 +865,8 @@ def _run_tgyesil(data_dict):
 
 
 # ────────────────────────────────────────────────────────────
+=======
+>>>>>>> 9e439e475d3267be52c01eac93d6a8e0814baba5
 # ANA DISPATCHER
 # ────────────────────────────────────────────────────────────
 def run_strategy(strategy_id, data_dict):
@@ -876,7 +884,10 @@ def run_strategy(strategy_id, data_dict):
             "strat9_momentum":       _run_momentum,
             "strat10_tavan":         _run_tavan,
             "strat11_spek":          _run_spek,
+<<<<<<< HEAD
             "strat12_tgyesil":  _run_tgyesil,
+=======
+>>>>>>> 9e439e475d3267be52c01eac93d6a8e0814baba5
         }
         fn = dispatch.get(strategy_id)
         return fn(data_dict) if fn else []

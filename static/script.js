@@ -81,8 +81,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Sayfa yüklendiğinde var olan son sonuçları çek
+<<<<<<< HEAD
     let allCommonStocks = [];
     let selectedFilters = new Set();
+=======
+>>>>>>> 9e439e475d3267be52c01eac93d6a8e0814baba5
     loadResults();
 
     async function loadResults() {
@@ -97,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.getElementById('last-update').textContent = "Son Güncelleme: " + data.date;
             
+<<<<<<< HEAD
             const commonTable = document.querySelector('#table-common tbody');
             
             if(data.common_stocks && data.common_stocks.length > 0) {
@@ -113,6 +117,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 renderFilters(Array.from(allStrats).sort());
                 renderCommonStocks();
+=======
+            // Ortak hisseleri doldur
+            const commonTable = document.querySelector('#table-common tbody');
+            commonTable.innerHTML = '';
+            
+            if(data.common_stocks && data.common_stocks.length > 0) {
+                document.getElementById('common-count').textContent = data.common_stocks.length;
+                
+                data.common_stocks.forEach(stock => {
+                    const stratPills = stock.found_in.map(s => `<span class="pill info" style="margin-right:4px">${s}</span>`).join('');
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><strong>${stock.symbol}</strong></td>
+                        <td><span class="pill warning">${stock.count} Onay</span></td>
+                        <td>${stratPills}</td>
+                    `;
+                    commonTable.appendChild(tr);
+                });
+>>>>>>> 9e439e475d3267be52c01eac93d6a8e0814baba5
             } else {
                 document.getElementById('common-count').textContent = "0";
                 commonTable.innerHTML = '<tr><td colspan="3">Listeye giren ortak hisse bulunamadı.</td></tr>';
@@ -188,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Sonuçlar yüklenirken hata:", e);
         }
     }
+<<<<<<< HEAD
 
     function renderFilters(strategies) {
         const container = document.getElementById('filter-container');
@@ -263,4 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
             commonTable.appendChild(tr);
         });
     }
+=======
+>>>>>>> 9e439e475d3267be52c01eac93d6a8e0814baba5
 });

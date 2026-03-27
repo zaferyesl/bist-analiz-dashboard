@@ -81,7 +81,10 @@ STRATEGIES = [
     "strat9_momentum",
     "strat10_tavan",
     "strat11_spek",
+<<<<<<< HEAD
     "strat12_tgyesil",
+=======
+>>>>>>> 9e439e475d3267be52c01eac93d6a8e0814baba5
     "common"
 ]
 
