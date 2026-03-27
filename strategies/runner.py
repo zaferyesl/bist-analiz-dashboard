@@ -508,87 +508,145 @@ def _run_yesil(data_dict):
 # ────────────────────────────────────────────────────────────
 # STRAT 9 – MOMENTUM
 # ────────────────────────────────────────────────────────────
+_momentum_predictor = None
+
+def get_momentum_predictor():
+    global _momentum_predictor
+    if _momentum_predictor is None:
+        import sys
+        import os
+        module_path = os.path.join(os.path.dirname(__file__), "momentum_module")
+        if module_path not in sys.path:
+            sys.path.append(module_path)
+        from .momentum_module.momentum_predictor import MomentumPredictor
+        _momentum_predictor = MomentumPredictor()
+    return _momentum_predictor
+
+
 def _run_momentum(data_dict):
+    try:
+        predictor = get_momentum_predictor()
+        # Automatically discover >30% rising stocks from last month and train model
+        predictor.setup_and_train_if_needed(data_dict)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Momentum predictor setup error: {e}")
+        return []
+
     results = []
     for symbol, df in data_dict.items():
         try:
-            if len(df) < 20:
+            if len(df) < 100:  
                 continue
-            close = df['Close'].squeeze(); volume = df['Volume'].squeeze()
-            high = df['High'].squeeze(); low = df['Low'].squeeze()
-
-            rsi = _rsi(close); atr = _atr(high, low, close, 14)
-            price = float(close.iloc[-1]); rsi_now = float(rsi.iloc[-1])
-            atr_now = float(atr.iloc[-1])
-            vol_now = float(volume.iloc[-1]); vol_avg = float(volume.rolling(10).mean().iloc[-1])
-            change_1d = (price / float(close.iloc[-2]) - 1) * 100
-            change_3d = (price / float(close.iloc[-4]) - 1) * 100
-
-            score = 0; reasons = []
-            if change_1d > 3:
-                score += 4; reasons.append(f"+%{change_1d:.1f} 1g momentum")
-            elif change_1d > 1.5:
-                score += 2; reasons.append(f"+%{change_1d:.1f} 1g yükseliş")
-            if change_3d > 5:
-                score += 3; reasons.append(f"+%{change_3d:.1f} 3g trend")
-            if vol_avg > 0 and vol_now > vol_avg * 2:
-                score += 4; reasons.append(f"Hacim patlaması {vol_now/vol_avg:.1f}x")
-            elif vol_avg > 0 and vol_now > vol_avg * 1.5:
-                score += 2; reasons.append(f"Hacim artışı {vol_now/vol_avg:.1f}x")
-            if 50 < rsi_now < 75:
-                score += 2; reasons.append(f"RSI momentum bölgesi ({rsi_now:.0f})")
-            if atr_now / price > 0.02:
-                score += 1; reasons.append("Yeterli volatilite")
-
-            if score >= 8:
-                levels = _price_levels(df, atr_mult_stop=1.5, target_pct=0.06)
-                results.append({"symbol": symbol, "score": score,
-                                 "details": " | ".join(reasons), **levels})
+                
+            prediction = predictor.predict_momentum(symbol, df)
+            if not prediction:
+                continue
+                
+            combined_score = prediction['combined_score']
+            layer1_prob = prediction['ml_probability']
+            pattern_score = prediction['pattern_score']
+            self_sim = prediction['self_similarity']
+            
+            # Karar kriteri (Katman 1 ve Katman 2 uyumu)
+            if combined_score >= 60.0 or layer1_prob >= 70.0:
+                reasons = []
+                reasons.append(f"ML İhtimali: %{layer1_prob:.1f}")
+                reasons.append(f"Patern Uyumu: {pattern_score:.1f}/100")
+                if self_sim > 0:
+                    reasons.append(f"Kendi Geçmişi (Self): {self_sim:.1f}/100")
+                    
+                levels = _price_levels(df, atr_mult_stop=1.5, target_pct=0.08)
+                results.append({
+                    "symbol": symbol,
+                    "score": combined_score,
+                    "details": f"Momentum Kombine Skor: {combined_score:.1f}/100 | " + " | ".join(reasons),
+                    **levels
+                })
         except Exception:
             continue
+            
     results.sort(key=lambda x: x["score"], reverse=True)
-    return results[:20]
+    return results[:15]
 
 
 # ────────────────────────────────────────────────────────────
 # STRAT 10 – TAVAN TAHMİNİ
 # ────────────────────────────────────────────────────────────
+_tavan_predictor = None
+
+def get_tavan_predictor():
+    global _tavan_predictor
+    if _tavan_predictor is None:
+        import sys
+        import os
+        module_path = os.path.join(os.path.dirname(__file__), "tavan_module")
+        if module_path not in sys.path:
+            sys.path.append(module_path)
+        from strategies.tavan_module.tavan_predictor import CeilingPredictor
+        _tavan_predictor = CeilingPredictor()
+    return _tavan_predictor
+
+
 def _run_tavan(data_dict):
+    try:
+        predictor = get_tavan_predictor()
+        from strategies.tavan_module.advanced_indicators import AdvancedIndicators
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Tavan predictor error: {e}")
+        return []
+
     results = []
     for symbol, df in data_dict.items():
         try:
-            if len(df) < 10:
+            if len(df) < 100:  # ML models require at least 100 days of history
                 continue
-            close = df['Close'].squeeze(); volume = df['Volume'].squeeze()
-            high = df['High'].squeeze(); low = df['Low'].squeeze()
-
-            price = float(close.iloc[-1]); prev_price = float(close.iloc[-2])
-            change_1d = (price / prev_price - 1) * 100
-            change_3d = (price / float(close.iloc[-4]) - 1) * 100
-            vol_now = float(volume.iloc[-1]); vol_avg = float(volume.rolling(5).mean().iloc[-2])
-            rsi_now = float(_rsi(close).iloc[-1])
-            high_now = float(high.iloc[-1]); low_now = float(low.iloc[-1])
-            close_position = (price - low_now) / (high_now - low_now + 1e-10)
-
-            score = 0; reasons = []
-            if change_1d > 5 and close_position > 0.85:
-                score += 5; reasons.append(f"Güçlü yükseliş+%{change_1d:.1f}, Tavan kapanışı")
-            if change_3d > 10:
-                score += 3; reasons.append(f"3g trend +%{change_3d:.1f}")
-            if vol_avg > 0 and vol_now > vol_avg * 2.5:
-                score += 4; reasons.append(f"Hacim x{vol_now/vol_avg:.1f} (spek ilgi)")
-            elif vol_avg > 0 and vol_now > vol_avg * 1.5:
-                score += 2; reasons.append(f"Yüksek hacim x{vol_now/vol_avg:.1f}")
-            if rsi_now > 65:
-                score += 2; reasons.append(f"RSI yüksek ({rsi_now:.0f})")
-
-            if score >= 8:
+            
+            # 1. Tüm indikatörleri heapla (70+)
+            indicators = AdvancedIndicators.calculate_all_indicators(df)
+            
+            # 2. Patern benzerliği skoru
+            pattern_score = predictor.pattern_analyzer.calculate_similarity_score(indicators)
+            
+            # 3. ML Lojistik Regresyon / Ensemble ihtimali
+            ml_probability = predictor.ml_trainer.predict_ceiling_probability(indicators)
+            
+            # 4. Kendi geçmişine (Self Analyzer) göre benzerlik
+            symbol_clean = symbol.replace('.IS', '')
+            self_analysis = predictor.self_analyzer.calculate_self_similarity(symbol_clean, indicators)
+            self_similarity = self_analysis['similarity_score']
+            self_confidence_emoji = self_analysis['confidence_emoji']
+            
+            # 5. Kombine Skor Matematiği
+            combined_score = (ml_probability * 100 * 0.4) + (pattern_score * 0.3) + (self_similarity * 0.3)
+            
+            # Karar koşulları
+            if ml_probability >= 0.60 or combined_score >= 60:
+                reasons = []
+                reasons.append(f"ML İhtimali: %{ml_probability*100:.1f}")
+                reasons.append(f"Genel Patern Uyumu: {pattern_score:.1f}/100")
+                reasons.append(f"Kendi Geçmişi (Self): {self_similarity:.1f}/100 {self_confidence_emoji}")
+                
+                # Detaylar
+                pre_sqz = indicators.get('pre_ceiling_squeeze', 0)
+                vol_break = indicators.get('volume_breakout_score', 0)
+                rsi = indicators.get('rsi_14', 0)
+                
+                if pre_sqz > 50: reasons.append(f"Tavan Öncesi Sıkışma: {pre_sqz:.0f}")
+                if vol_break > 60: reasons.append(f"Hacim Breakout: {vol_break:.0f}")
+                if rsi > 70: reasons.append(f"RSI Yüksek: {rsi:.0f}")
+                
                 levels = _price_levels(df, atr_mult_stop=2.0, target_pct=0.07)
-                results.append({"symbol": symbol, "score": score,
-                                 "details": f"Tavan İhtimali (Skor:{score}) | " + " | ".join(reasons),
-                                 **levels})
+                results.append({
+                    "symbol": symbol,
+                    "score": combined_score,
+                    "details": f"Tavan Kombine Skor: {combined_score:.1f}/100 | " + " | ".join(reasons),
+                    **levels
+                })
         except Exception:
             continue
+            
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:15]
 
@@ -599,97 +657,147 @@ def _run_tavan(data_dict):
 # ────────────────────────────────────────────────────────────
 def _run_spek(data_dict):
     results = []
-    # Likidite eşiği: günlük min 1M TL ciro
-    MIN_VOLUME_TL = 1_000_000
-
+    MIN_AVG_VOLUME_TL = 1_000_000
+    MAX_UPPER_WICK_RATIO = 0.4
+    MAX_CONSECUTIVE_UP_DAYS = 5
+    MAX_RVOL_FOR_SAFETY = 5.0
+    
     for symbol, df in data_dict.items():
         try:
-            if len(df) < 60:
+            if len(df) < 260:
                 continue
 
+            # 1. Temel Fiyat Verileri ve Göstergeler
             close = df['Close'].squeeze()
-            high  = df['High'].squeeze()
-            low   = df['Low'].squeeze()
+            high = df['High'].squeeze()
+            low = df['Low'].squeeze()
+            open_ = df['Open'].squeeze()
             volume = df['Volume'].squeeze()
-            open_  = df['Open'].squeeze()
 
-            # ── Temel fiyat değerleri ──────────────────────
-            price      = float(close.iloc[-1])
-            prev_close = float(close.iloc[-2])
-            open_val   = float(open_.iloc[-1])
-            high_val   = float(high.iloc[-1])
-            low_val    = float(low.iloc[-1])
+            price = float(close.iloc[-1])
+            prev_close = float(close.iloc[-2]) if len(close) > 1 else price
+            open_val = float(open_.iloc[-1])
+            high_val = float(high.iloc[-1])
+            low_val = float(low.iloc[-1])
 
-            # ── Hareketli ortalamalar ──────────────────────
-            ma50  = float(_sma(close, 50).iloc[-1])
-            ma150 = float(_sma(close, 150).iloc[-1]) if len(df) >= 150 else ma50
-            ma200 = float(_sma(close, 200).iloc[-1]) if len(df) >= 200 else ma150
+            ma50 = float(_sma(close, 50).iloc[-1])
+            ma150 = float(_sma(close, 150).iloc[-1])
+            ma200 = float(_sma(close, 200).iloc[-1])
+            ma200_prev = float(_sma(close, 200).iloc[-31]) if len(close) > 230 else ma200
+            
+            high_52w = float(close.rolling(260).max().iloc[-1])
+            low_52w = float(close.rolling(260).min().iloc[-1])
 
-            # ── Momentum (ROC) ─────────────────────────────
-            roc_5d  = (price / float(close.iloc[-6])  - 1) * 100 if len(df) > 6  else 0
-            roc_3d  = (price / float(close.iloc[-4])  - 1) * 100 if len(df) > 4  else 0
-            roc_10d = (price / float(close.iloc[-11]) - 1) * 100 if len(df) > 11 else 0
+            tr = np.maximum(high - low, np.maximum(abs(high - close.shift(1)), abs(low - close.shift(1))))
+            atr20 = float(tr.rolling(20).mean().iloc[-1])
+            atr60 = float(tr.rolling(60).mean().iloc[-1])
+            vcp_ratio = atr20 / atr60 if atr60 > 0 else 1.0
 
-            # ── Hacim ──────────────────────────────────────
-            vol_ma20 = float(volume.rolling(20).mean().iloc[-1])
+            high_30d = float(high.rolling(30).max().iloc[-1])
+            low_30d = float(low.rolling(30).min().iloc[-1])
+            range_30d = (high_30d - low_30d) / low_30d * 100 if low_30d > 0 else 0
+
             vol_ma50 = float(volume.rolling(50).mean().iloc[-1])
-            vol_now  = float(volume.iloc[-1])
-            rvol_20  = vol_now / vol_ma20 if vol_ma20 > 0 else 1.0
-            vol_zscore = (vol_now - float(volume.rolling(60).mean().iloc[-1])) / \
-                         (float(volume.rolling(60).std().iloc[-1]) + 1e-10)
+            recent_volume_avg = float(volume.iloc[-5:].mean())
 
-            # yükseliş / düşüş günlerinde hacim dağılımı
             returns = close.pct_change()
-            up_vol   = float(volume[returns > 0].tail(20).mean()) + 1e-10
-            down_vol = float(volume[returns < 0].tail(20).mean()) + 1e-10
-            up_vol_dom = up_vol / down_vol
 
-            # ── ATR ve BB ─────────────────────────────────
-            atr14   = float(_atr(high, low, close, 14).iloc[-1])
-            atr5    = float(_atr(high, low, close, 5).iloc[-1])
-            atr_exp = (atr5 / atr14 - 1) * 100 if atr14 > 0 else 0
-            atr_pct = atr14 / price * 100 if price > 0 else 0
+            # 2. Minervini Trend Şablonu
+            cond_trend = [
+                price > ma150, price > ma200, ma150 > ma200,
+                (ma200 - ma200_prev) > 0, 
+                ma50 > ma150, price > ma50,
+                price >= high_52w * 0.75, price >= low_52w * 1.30
+            ]
+            trend_score = sum(cond_trend)
+            vcp_score = sum([vcp_ratio < 0.95, range_30d < 30])
+            volume_score = 1 if recent_volume_avg > vol_ma50 * 0.8 else 0
 
-            bb_l, bb_m, bb_h = _bollinger(close, 20)
-            bb_width = float((bb_h - bb_l) / (bb_m + 1e-10) * 100).real
-            bb_width = float(bb_width) if not (bb_width != bb_width) else 10  # nan guard
+            # Sadece trend'i sağlam hisselerde spek tara
+            if trend_score < 6:
+                continue
+                
+            # 3. Spek Derin Feature Hesaplamaları
+            def calc_roc(p): 
+                return (price / float(close.iloc[-p-1]) - 1) * 100 if len(close) > p else 0
+            
+            roc_1d = calc_roc(1)
+            roc_3d = calc_roc(3)
+            roc_5d = calc_roc(5)
+            roc_10d = calc_roc(10)
 
-            # ── Likidite ───────────────────────────────────
+            high_20d = high.rolling(20).max()
+            high_20d_max = float(high_20d.iloc[-1])
+            high_55d_max = float(high.rolling(55).max().iloc[-1])
+
+            dist_20d = (price / high_20d_max - 1) * 100 if high_20d_max > 0 else 0
+            dist_55d = (price / high_55d_max - 1) * 100 if high_55d_max > 0 else 0
+
+            breakout_days = close > high_20d.shift(1)
+            breakout_vol_ratio = 0.0
+            if breakout_days.iloc[-5:].any():
+                last_breakout_idx = breakout_days[breakout_days].index[-1]
+                b_vol = float(volume.loc[last_breakout_idx])
+                avg_b_vol = float(volume.rolling(20).mean().loc[last_breakout_idx])
+                breakout_vol_ratio = b_vol / avg_b_vol if avg_b_vol > 0 else 0
+
+            vol_mean_20 = float(volume.rolling(20).mean().iloc[-1])
+            rvol_20 = float(volume.iloc[-1] / vol_mean_20) if vol_mean_20 > 0 else 1.0
+            vol_mean_60 = float(volume.rolling(60).mean().iloc[-1])
+            vol_std_60 = float(volume.rolling(60).std().iloc[-1])
+            vol_zscore = (float(volume.iloc[-1]) - vol_mean_60) / vol_std_60 if vol_std_60 > 0 else 0
+
+            up_vol = float(volume[returns > 0].tail(20).mean()) if not volume[returns > 0].empty else 1.0
+            down_vol = float(volume[returns < 0].tail(20).mean()) if not volume[returns < 0].empty else 1.0
+            up_vol_dom = up_vol / down_vol if down_vol > 0 else 1.0
+
+            atr_pct = (atr20 / price) * 100 if price > 0 else 0
+
+            bb_period = 20
+            bb_middle = close.rolling(bb_period).mean()
+            bb_std_dev = close.rolling(bb_period).std()
+            bb_upper = bb_middle + (bb_std_dev * 2)
+            bb_lower = bb_middle - (bb_std_dev * 2)
+            bb_width = float(((bb_upper - bb_lower) / bb_middle * 100).iloc[-1])
+
+            atr_20_prev = float(tr.rolling(20).mean().iloc[-6])
+            atr_expansion = (atr20 / atr_20_prev - 1) * 100 if atr_20_prev > 0 else 0
+
             avg_vol_tl = float((close * volume).tail(20).mean())
+            
+            slippage_risk = 0
+            if avg_vol_tl < MIN_AVG_VOLUME_TL: slippage_risk = 10
+            elif avg_vol_tl < MIN_AVG_VOLUME_TL * 3: slippage_risk = 5
 
-            # ── Risk Faktörleri ────────────────────────────
-            candle_range  = high_val - low_val + 1e-10
-            upper_wick    = high_val - max(open_val, price)
-            upper_wick_ratio = upper_wick / candle_range
+            candle_body_top = max(open_val, price)
+            candle_range = high_val - low_val
+            if candle_range == 0: candle_range = 1e-10
+            upper_wick_ratio = (high_val - candle_body_top) / candle_range
 
-            # Ardışık yükseliş günleri
-            consec_up = 0
+            close_pos = (price - low_val) / candle_range
+            blowoff_risk = 10 if float(returns.iloc[-1]) > 0.05 and rvol_20 > 3 and close_pos < 0.3 else 0
+
+            gap_up = (open_val - prev_close) / prev_close if prev_close > 0 else 0
+            gap_reversal = 10 if gap_up > 0.03 and price < open_val else 0
+
+            consecutive_up = 0
             for i in range(1, min(10, len(returns))):
-                if float(returns.iloc[-i]) > 0:
-                    consec_up += 1
-                else:
-                    break
+                if float(returns.iloc[-i]) > 0: consecutive_up += 1
+                else: break
+            mean_reversion_risk = 10 if consecutive_up > MAX_CONSECUTIVE_UP_DAYS else 0
 
-            # gap + zayıf kapanış
-            gap_up_pct = (open_val - prev_close) / prev_close if prev_close > 0 else 0
-            gap_reversal = gap_up_pct > 0.03 and price < open_val
-            close_pos    = (price - low_val) / candle_range
-            blowoff      = roc_5d > 10 and rvol_20 > 3 and close_pos < 0.3
+            market_regime_score = 5
 
-            # 20d zirveye mesafe
-            high_20d = float(high.rolling(20).max().iloc[-1])
-            dist_20d = (price / high_20d - 1) * 100 if high_20d > 0 else 0
+            # 4. Spek Mimarisi Uçuş Skoru
+            mom_sc = 0
+            if roc_5d > 10: mom_sc += 10
+            elif roc_5d > 5: mom_sc += 5
+            if dist_20d > -2: mom_sc += 10
+            elif dist_20d > -5: mom_sc += 5
+            if breakout_vol_ratio > 1.5: mom_sc += 10
+            elif breakout_vol_ratio > 1.2: mom_sc += 5
+            mom_sc = min(mom_sc, 30)
 
-            # ── PUANLAMA (0-100) ───────────────────────────
-            # Momentum (max 30)
-            mom = 0
-            if roc_5d > 10: mom += 10
-            elif roc_5d > 5: mom += 5
-            if dist_20d > -2: mom += 10
-            elif dist_20d > -5: mom += 5
-            mom = min(mom, 30)
-
-            # Hacim (max 25)
             vol_sc = 0
             if 1.5 < rvol_20 < 4: vol_sc += 10
             elif 1.2 < rvol_20 < 1.5: vol_sc += 5
@@ -699,55 +807,69 @@ def _run_spek(data_dict):
             elif up_vol_dom > 1.1: vol_sc += 3
             vol_sc = min(vol_sc, 25)
 
-            # Sıkışma kırılımı (max 20)
-            sqz = 0
-            if atr_exp > 10: sqz += 10
-            elif atr_exp > 5: sqz += 5
-            if bb_width < 5: sqz += 10
-            elif bb_width < 8: sqz += 5
-            sqz = min(sqz, 20)
+            sqz_sc = 0
+            if atr_expansion > 10: sqz_sc += 10
+            elif atr_expansion > 5: sqz_sc += 5
+            if bb_width < 5: sqz_sc += 10
+            elif bb_width < 8: sqz_sc += 5
+            sqz_sc = min(sqz_sc, 20)
 
-            # Likidite (max 10)
-            liq = 0
-            if avg_vol_tl > MIN_VOLUME_TL * 5: liq = 10
-            elif avg_vol_tl > MIN_VOLUME_TL * 2: liq = 7
-            elif avg_vol_tl > MIN_VOLUME_TL: liq = 5
-            liq = max(liq, 0)
+            liq_sc = 0
+            if avg_vol_tl > MIN_AVG_VOLUME_TL * 5: liq_sc = 10
+            elif avg_vol_tl > MIN_AVG_VOLUME_TL * 2: liq_sc = 7
+            elif avg_vol_tl > MIN_AVG_VOLUME_TL: liq_sc = 5
+            liq_sc = max(liq_sc - slippage_risk, 0)
 
-            # Market (sabit 7.5 — tek hisseden piyasa bilgisi yok)
-            mkt = 7.5
+            mkt_sc = min(market_regime_score * 1.5, 15)
 
-            # Ceza
-            pen = 0
-            if blowoff: pen += 10
-            if gap_reversal: pen += 10
-            if consec_up > 5: pen += 10
-            if upper_wick_ratio > 0.4: pen += 10
-            if rvol_20 > 5: pen += 10
-            if avg_vol_tl < MIN_VOLUME_TL: pen += 10
-            pen = min(pen, 30)
+            pen_sc = blowoff_risk + gap_reversal + mean_reversion_risk
+            if upper_wick_ratio > MAX_UPPER_WICK_RATIO: pen_sc += 10
+            if rvol_20 > MAX_RVOL_FOR_SAFETY: pen_sc += 10
+            pen_sc = min(pen_sc, 30)
 
-            total = max(0, min(100, mom + vol_sc + sqz + liq + mkt - pen))
+            flight_score = max(0, min(100, mom_sc + vol_sc + sqz_sc + liq_sc + mkt_sc - pen_sc))
 
-            # Minimum Minervini koşulları (piyasa trendi)
-            minervini_ok = price > ma50 and price > ma150
+            # 5. No-Trade Taraması İçin Ret Kuralları
+            reasons = []
+            if rvol_20 > 5 and upper_wick_ratio > 0.4:
+                reasons.append("PUMP RİSKİ")
+            if avg_vol_tl < MIN_AVG_VOLUME_TL and atr_pct > 5:
+                reasons.append("SLİPPAGE RİSKİ")
+            if consecutive_up > 5 and rvol_20 < 1:
+                reasons.append("DAĞITIM RİSKİ")
+            if blowoff_risk > 0:
+                reasons.append("BLOW-OFF TOP")
+            if flight_score < 40:
+                reasons.append("DÜŞÜK SKOR")
 
-            if total >= 45 and minervini_ok and avg_vol_tl >= MIN_VOLUME_TL:
-                reasons = []
-                if roc_5d > 5:  reasons.append(f"5g momentum +%{roc_5d:.1f}")
-                if rvol_20 > 1.2: reasons.append(f"RVOL:{rvol_20:.1f}x")
-                if dist_20d > -5: reasons.append(f"20g zirveye {dist_20d:.1f}%")
-                if sqz >= 10:   reasons.append("Sıkışma kırılımı")
-                if up_vol_dom > 1.2: reasons.append(f"Alım hacmi {up_vol_dom:.1f}x")
+            if len(reasons) > 0:
+                continue
 
-                levels = _price_levels(df, atr_mult_stop=2.0, target_pct=0.12)
-                results.append({
-                    "symbol": symbol,
-                    "score": round(total),
-                    "details": f"Spek Skor:{round(total)}/100 | " + " | ".join(reasons),
-                    **levels
-                })
-        except Exception:
+            # 6. Analiz Cümleleri (Neden Uçabilir)
+            positives = []
+            if roc_5d > 10: positives.append(f"Momentum 5G: +%{roc_5d:.1f}")
+            if rvol_20 > 1.5: positives.append(f"RVOL: {rvol_20:.1f}x")
+            if dist_20d > -2: positives.append(f"Zirveye %{abs(dist_20d):.1f}")
+            if atr_expansion > 10: positives.append(f"ATR Exp: +%{atr_expansion:.1f}")
+            if breakout_vol_ratio > 1.5: positives.append("Kırılım Teyidi")
+
+            # 7. İşlem Seviyeleri (Tetik/Direnç/Hedefler)
+            entry = round(price * 1.01, 2)
+            stop = round(entry - (atr20 * 2.0), 2)
+            target_1 = round(entry * 1.15, 2)
+            target_2 = round(entry * 1.40, 2)
+
+            results.append({
+                "symbol": symbol,
+                "score": flight_score,
+                "details": f"Spek Skor: {flight_score:.1f}/100 | " + " | ".join(positives[:4]),
+                "Entry_Price": entry,
+                "Stop_Loss": stop,
+                "Target_1": target_1,
+                "Target_2": target_2
+            })
+
+        except Exception as e:
             continue
 
     results.sort(key=lambda x: x["score"], reverse=True)
@@ -859,8 +981,6 @@ def _run_tgyesil(data_dict):
 
 
 # ────────────────────────────────────────────────────────────
-=======
->>>>>>> 9e439e475d3267be52c01eac93d6a8e0814baba5
 # ANA DISPATCHER
 # ────────────────────────────────────────────────────────────
 def run_strategy(strategy_id, data_dict):
