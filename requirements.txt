@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+jinja2
+yfinance
+pandas
+numpy
+scikit-learn
+scipy
+TA-Lib
