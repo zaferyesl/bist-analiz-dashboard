@@ -533,39 +533,60 @@ def _run_momentum(data_dict):
         logging.getLogger(__name__).error(f"Momentum predictor setup error: {e}")
         return []
 
+    # ── Orijinal momentum_predictor strateji eşikleri ──────────────────
+    MIN_LAYER1_PROB    = 60.0   # ml_prob eşiği   (Katman 1)
+    MIN_PATTERN_SCORE  = 60.0   # pattern eşiği   (Katman 1)
+    MIN_SELF_SIM       = 60.0   # self-sim eşiği  (Katman 2)
+
     results = []
     for symbol, df in data_dict.items():
         try:
-            if len(df) < 100:  
+            if len(df) < 100:
                 continue
-                
+
             prediction = predictor.predict_momentum(symbol, df)
             if not prediction:
                 continue
-                
-            combined_score = prediction['combined_score']
-            layer1_prob = prediction['ml_probability']
+
+            layer1_prob   = prediction['ml_probability']
             pattern_score = prediction['pattern_score']
-            self_sim = prediction['self_similarity']
-            
-            # Karar kriteri (Katman 1 ve Katman 2 uyumu)
-            if combined_score >= 60.0 or layer1_prob >= 70.0:
-                reasons = []
-                reasons.append(f"ML İhtimali: %{layer1_prob:.1f}")
-                reasons.append(f"Patern Uyumu: {pattern_score:.1f}/100")
-                if self_sim > 0:
-                    reasons.append(f"Kendi Geçmişi (Self): {self_sim:.1f}/100")
-                    
-                levels = _price_levels(df, atr_mult_stop=1.5, target_pct=0.08)
-                results.append({
-                    "symbol": symbol,
-                    "score": combined_score,
-                    "details": f"Momentum Kombine Skor: {combined_score:.1f}/100 | " + " | ".join(reasons),
-                    **levels
-                })
+            self_sim      = prediction['self_similarity']
+
+            # ── KATMAN 1: ikisi de geçmeli (AND) ───────────────────────
+            if layer1_prob < MIN_LAYER1_PROB or pattern_score < MIN_PATTERN_SCORE:
+                continue
+
+            # ── KATMAN 2: self-benzerlik eşiği ─────────────────────────
+            # self_sim == 0 → yetersiz geçmiş veri, Katman 2 atlanır
+            if self_sim > 0 and self_sim < MIN_SELF_SIM:
+                continue
+
+            # ── Birleşik skor (orijinal formül) ────────────────────────
+            # combined = prob*0.4 + pattern*0.3 + self_sim*0.3
+            # (orijinalde similarity_avg*0.1 de vardı; burada pattern'a dahil)
+            combined_score = (
+                layer1_prob   * 0.4 +
+                pattern_score * 0.3 +
+                self_sim      * 0.3
+            )
+
+            reasons = [
+                f"ML İhtimali: %{layer1_prob:.1f}",
+                f"Patern Uyumu: {pattern_score:.1f}/100",
+            ]
+            if self_sim > 0:
+                reasons.append(f"Kendi Geçmişi (Self): {self_sim:.1f}/100")
+
+            levels = _price_levels(df, atr_mult_stop=1.5, target_pct=0.08)
+            results.append({
+                "symbol": symbol,
+                "score":  combined_score,
+                "details": f"Momentum Kombine Skor: {combined_score:.1f}/100 | " + " | ".join(reasons),
+                **levels
+            })
         except Exception:
             continue
-            
+
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:15]
 

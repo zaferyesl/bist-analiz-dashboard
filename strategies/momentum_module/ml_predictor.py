@@ -214,10 +214,11 @@ class MLPredictor:
                 value = stock_features.get(feat, 0)
                 if pd.isna(value) or np.isinf(value):
                     value = 0
-                feature_vector.append(value)
+                feature_vector.append(float(value))
             
-            X = np.array(feature_vector).reshape(1, -1)
-            X_scaled = self.scaler.transform(X)
+            # ❗ DataFrame olarak ver → sklearn feature-names uyarısı olmaz
+            X_df = pd.DataFrame([feature_vector], columns=self.feature_names)
+            X_scaled = self.scaler.transform(X_df)
             
             # 1. GENEL BENZERLİK (Tüm yükselen hisselerle)
             similarities = cosine_similarity(X_scaled, self.rising_features_scaled)[0]
@@ -267,6 +268,7 @@ class MLPredictor:
             best_cluster = -1
             
             if self.kmeans:
+                # KMeans numpy ile eğitildi → numpy ver
                 cluster_id = self.kmeans.predict(X_scaled)[0]
                 best_cluster = int(cluster_id)
                 
@@ -278,17 +280,20 @@ class MLPredictor:
                 cluster_match = max(0, 100 - distance * 20)
             
             # 4. BİRLEŞİK SKOR
+            # Tüm bileşenler 0-100 birimine getirildi
+            avg_sim_pct = avg_similarity * 100
+            
             if self.kmeans:
-                # Cosine similarity: %40, Pattern match: %30, Cluster: %30
+                # avg_sim %40 + pattern %35 + cluster %25
                 probability = (
-                    avg_similarity * 40 +
-                    pattern_match * 0.30 +
-                    cluster_match * 0.30
+                    avg_sim_pct   * 0.40 +
+                    pattern_match * 0.35 +
+                    cluster_match * 0.25
                 )
             else:
-                # Cosine similarity: %50, Pattern match: %50
+                # avg_sim %50 + pattern %50
                 probability = (
-                    avg_similarity * 50 +
+                    avg_sim_pct   * 0.50 +
                     pattern_match * 0.50
                 )
             
