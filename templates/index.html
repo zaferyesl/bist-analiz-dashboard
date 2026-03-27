@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIST Pro Analiz - Premium</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <i class="fa-solid fa-chart-line logo-icon"></i>
+                <h2>BIST Pro Analiz</h2>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-section">Genel</div>
+                <a href="#" class="nav-item active" data-tab="dashboard">
+                    <i class="fa-solid fa-house"></i> Ana Panel
+                </a>
+                <a href="#" class="nav-item highlight-tab" data-tab="common_stocks">
+                    <i class="fa-solid fa-star"></i> Ortak Hisseler
+                </a>
+                <a href="#" class="nav-item" data-tab="performance" id="perf-nav-item">
+                    <i class="fa-solid fa-chart-bar"></i> Performans Analizi
+                </a>
+                
+                <div class="nav-section">Stratejiler</div>
+                <a href="#" class="nav-item" data-tab="strat_birlesik">
+                    <i class="fa-solid fa-chart-pie"></i> Birleşik Tarama
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_gelismis_yesil">
+                    <i class="fa-solid fa-leaf"></i> Gelişmiş Yeşil Tarama
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_minervini">
+                    <i class="fa-solid fa-arrow-trend-up"></i> Minervini Tarama
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_mum">
+                    <i class="fa-solid fa-fire"></i> Mum Formasyon
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_sikismis">
+                    <i class="fa-solid fa-compress-arrows-alt"></i> Sıkışmış Hisseler
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_tepki1">
+                    <i class="fa-solid fa-bolt"></i> Tepki Taraması 1
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_tepki2">
+                    <i class="fa-solid fa-bolt-lightning"></i> Tepki Taraması 2
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_yesil">
+                    <i class="fa-regular fa-money-bill-1"></i> Yeşil Tarama
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_tgyesil">
+                    <i class="fa-solid fa-check-double"></i> TGYesil
+                </a>
+                
+                <div class="nav-section">Yapay Zeka (AI)</div>
+                <a href="#" class="nav-item" data-tab="strat_momentum">
+                    <i class="fa-solid fa-rocket"></i> Momentum Etkisi
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_tavan">
+                    <i class="fa-solid fa-arrow-up-right-dots"></i> Tavan Tahmini
+                </a>
+                <a href="#" class="nav-item" data-tab="strat_spek">
+                    <i class="fa-solid fa-jet-fighter-up"></i> Spek Tarayıcı
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="top-bar">
+                <div class="top-info">
+                    <h1>Sistem Hazır</h1>
+                    <p id="last-update">Son Güncelleme: Bekleniyor</p>
+                </div>
+                <button id="analyze-btn" class="analyze-btn">
+                    <i class="fa-solid fa-play"></i> Analizi Başlat
+                </button>
+            </header>
+
+            <!-- Progress Bar Container (Hidden by default) -->
+            <div id="progress-container" class="progress-wrapper hidden">
+                <div class="progress-info">
+                    <span id="progress-text">Veriler İndiriliyor...</span>
+                    <span id="progress-percent">0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                </div>
+            </div>
+
+            <!-- Tab Contents -->
+            <div class="tab-content-container">
+                
+                <!-- Dashboard Tab -->
+                <div id="dashboard" class="tab-pane active">
+                    <div class="card welcome-card">
+                        <h2>Sisteme Hoş Geldiniz</h2>
+                        <p>Bu sistem, Borsa İstanbul (BIST) hisselerini 10 farklı strateji kullanarak tek bir tıkla analiz etmenizi sağlar.</p>
+                        <ul class="features-list">
+                            <li><i class="fa-solid fa-check-circle"></i> Tüm hisseleri Yahoo verileri üzerinden otomatik indirip analiz eder.</li>
+                            <li><i class="fa-solid fa-check-circle"></i> Hızlı çalışır, günlük sonuçları bilgisayarınızda (results/ klasöründe) arşivler.</li>
+                            <li><i class="fa-solid fa-check-circle"></i> "Ortak Hisseler" sekmesinden, birden fazla stratejide görünen güçlü hisseleri bulabilirsiniz.</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <i class="fa-solid fa-layer-group stat-icon"></i>
+                            <div class="stat-data">
+                                <span class="stat-value">10</span>
+                                <span class="stat-label">Aktif Strateji</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <i class="fa-solid fa-coins stat-icon"></i>
+                            <div class="stat-data">
+                                <span class="stat-value">500+</span>
+                                <span class="stat-label">Taranan Hisse</span>
+                            </div>
+                        </div>
+                        <div class="stat-card highlight-stat">
+                            <i class="fa-solid fa-star stat-icon"></i>
+                            <div class="stat-data">
+                                <span class="stat-value" id="common-count">0</span>
+                                <span class="stat-label">Ortak Hisse Sinyali</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="common_stocks" class="tab-pane">
+                    <div class="card info-card">
+                        <h3><i class="fa-solid fa-star"></i> Ortak Hisseler</h3>
+                        <p>Bu sekmede en az 2 veya daha fazla farklı strateji taramasından ortak olarak geçen hisseler listelenmektedir. Yüksek kesişim sayısı, hissenin daha fazla kriter tarafından onaylandığı anlamına gelir.</p>
+                        
+                        <div class="filter-section" style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 0.9rem; color: var(--text-muted);"><i class="fa-solid fa-filter"></i> Stratejiye Göre Filtrele</h4>
+                            <div id="filter-container" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                <!-- Buttons loaded by JS -->
+                                <em style="color:var(--text-muted); font-size: 0.85rem;">Yükleniyor...</em>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="results-table-container">
+                        <table class="data-table" id="table-common">
+                            <thead>
+                                <tr>
+                                    <th>Hisse Kodu</th>
+                                    <th>Sinyal Sayısı</th>
+                                    <th>Onay Veren Stratejiler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Performans Analizi Sekmesi -->
+                <div id="performance" class="tab-pane">
+                    <div class="card info-card">
+                        <h3><i class="fa-solid fa-chart-bar"></i> Strateji Performans Analizi</h3>
+                        <p>Geçmiş analiz kayıtlarınıza göre hangi stratejinin daha fazla kazandırdığını, isabet oranlarını ve en iyi hisseleri görün.</p>
+                    </div>
+                    <!-- Görünüm Sekmeleri -->
+                    <div id="perf-view-tabs" class="perf-filter-row" style="margin-bottom:1rem"></div>
+
+                    <!-- Periyot Filtresi kaldırıldı - artık JS inject ediyor -->
+
+                    <!-- Özet Kartlar -->
+                    <div id="perf-summary" class="perf-summary-row"></div>
+
+                    <!-- Strateji Sıralaması -->
+                    <div id="perf-strategy-grid" class="perf-strategy-grid"></div>
+
+                    <!-- Yükleniyor mesajı -->
+                    <div id="perf-loading" class="perf-loading">
+                        <i class="fa-solid fa-spinner fa-spin"></i> Performans verileri hesaplanıyor...<br>
+                        <small>Bu işlem geçmiş kayıt sayısına göre birkaç dakika sürebilir.</small>
+                    </div>
+                    <div id="perf-empty" class="perf-loading hidden">📂 Henüz yeterli geçmiş kayıt yok. En az 2 gün analiz verisi gerekli.</div>
+                </div>
+
+                <!-- Strategy: Birleşik Tarama -->
+                <div id="strat_birlesik" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Birleşik Tarama</h3>
+                        <p>%3 Kar Hedefli Düşük Riskli Hisse Tarayıcısı. Mum formasyonları, destek-direnç analizleri ve teknik indikatörler gözetilerek hızlı toparlanma eğilimi gösteren hisseleri filtreler.</p>
+                    </div>
+                    <div class="cards-container" id="cards-birlesik"></div>
+                </div>
+
+                <!-- Strategy: Gelişmiş Yeşil Tarama -->
+                <div id="strat_gelismis_yesil" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Gelişmiş Yeşil Tarama</h3>
+                        <p>Piyasadaki para girişinin yüksek olduğu, momentumun pozitife döndüğü "yeşil" sinyal veren hisselerin gelişmiş teknik analizidir.</p>
+                    </div>
+                    <div class="cards-container" id="cards-gelismis_yesil"></div>
+                </div>
+
+                <div id="strat_minervini" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Minervini Trend Şablonu</h3>
+                        <p>Mark Minervini'nin VCP ve aşama 2 yükseliş trendi formasyonlarına uyan, büyük ralli öncesinde olan hisseleri tarar.</p>
+                    </div>
+                    <div class="cards-container" id="cards-minervini"></div>
+                </div>
+
+                <div id="strat_mum" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Mum Formasyonları</h3>
+                        <p>Temel ve ileri seviye fiyat hareket modeli analizleri (Hammer, Engulfing vb.) ile dönüş yapma ihtimali olan dip veya tepe hisseleri belirler.</p>
+                    </div>
+                    <div class="cards-container" id="cards-mum"></div>
+                </div>
+
+                <div id="strat_sikismis" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Sıkışmış Hisseler</h3>
+                        <p>Bollinger bantlarının daraldığı, işlem hacminin düştüğü ve yakın zamanda büyük bir kırılım beklenen hisselerdir.</p>
+                    </div>
+                    <div class="cards-container" id="cards-sikismis"></div>
+                </div>
+
+                <div id="strat_tepki1" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Tepki Taraması 1</h3>
+                        <p>Aşırı satım bölgesine gelmiş, destek noktalarından dönüş yapıp ilk yukarı yönlü tepkisini veren hisselerdir.</p>
+                    </div>
+                    <div class="cards-container" id="cards-tepki1"></div>
+                </div>
+                
+                <div id="strat_tepki2" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Tepki Taraması 2 (Alternatif)</h3>
+                        <p>Tepki 1 stratejisinin farklı periyotlardaki hareketli ortalamalara (EMA200, SMA50) çarpıp dönen alt varyasyonudur.</p>
+                    </div>
+                    <div class="cards-container" id="cards-tepki2"></div>
+                </div>
+
+                <div id="strat_yesil" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Yeşil Tarama</h3>
+                        <p>Düşüş trendinden tamamen kurtulmuş ve MACD, RSI indikatörlerinde net büyüme sinyali üreten ilk yükseliş hisseleri.</p>
+                    </div>
+                    <div class="cards-container" id="cards-yesil"></div>
+                </div>
+
+                <div id="strat_momentum" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Momentum Etkisi</h3>
+                        <p>Geçmiş günlerdeki yüksek hacimli fiyat artışlarının bir sonraki güne devretme potansiyelini ölçen model.</p>
+                    </div>
+                    <div class="cards-container" id="cards-momentum"></div>
+                </div>
+
+                <div id="strat_tavan" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 Tavan Tahmini</h3>
+                        <p>Bir hissenin o gün Tavan kilitleme ihtimalini, alım kademelerindeki baskıyı ve spek geçmişini gözeterek puanlayan sistem.</p>
+                    </div>
+                    <div class="cards-container" id="cards-tavan"></div>
+                </div>
+
+                <div id="strat_spek" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>🚀 Spek Tarayıcı</h3>
+                        <p>Momentum, hacim patlaması, sıkışma kırılımı ve likidite kriterlerini birleştiren 0-100 puanlı Spek Uçuş Analizi. Yüksek puan = yüksek kırılım potansiyeli.</p>
+                    </div>
+                    <div class="cards-container" id="cards-spek"></div>
+                </div>
+
+                <div id="strat_tgyesil" class="tab-pane">
+                    <div class="card info-card">
+                        <h3>📌 TGYesil</h3>
+                        <p>Trend Şablonu, VCP daralması ve "Çok Güçlü" veya "Güçlü" seviyede Hacim Breakout (hacim patlaması) onaylarına sahip sağlam hisseleri tespit eder.</p>
+                    </div>
+                    <div class="cards-container" id="cards-tgyesil"></div>
+                </div>
+                
+            </div>
+        </main>
+    </div>
+
+    <!-- Script yüklemeleri -->
+    <script src="/static/script.js"></script>
+    <script src="/static/performance.js"></script>
+</body>
+</html>

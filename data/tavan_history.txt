@@ -1,0 +1,15 @@
+# TAVAN GEÇMİŞİ
+# Format: TARIH|SEMBOL|YUZDE
+# Örnek: 2024-01-15|THYAO|12.5
+#
+# KULLANIM:
+# 1. Her gün tavan olan hisseleri buraya ekleyin
+# 2. Tarih formatı: YYYY-MM-DD (örn: 2024-01-15)
+# 3. Sembol: BIST kodu (örn: THYAO, AKBNK)
+# 4. Yüzde: Tavan artış yüzdesi (örn: 12.5)
+#
+# ÖRNEK KAYITLAR:
+# 2024-01-15|THYAO|12.5
+# 2024-01-16|AKBNK|10.2
+# 2024-01-17|GARAN|11.8
+#
